@@ -2,126 +2,206 @@ package org.finalproject.sdnxmlprocess;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
-import java.io.StringReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.List;
-
-import javax.xml.parsers.DocumentBuilderFactory;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
-import org.xml.sax.InputSource;
-
 import com.jayway.jsonpath.JsonPath;
-
 import sun.misc.BASE64Encoder;
 
+@SuppressWarnings("restriction")
 public class XMLProcess {
 	public static void main(String[] args) {
 		XMLProcess xmlProcess = new XMLProcess();
 		xmlProcess.get_response();
-		xmlProcess.get_response_data();
 	}
 
 	public void get_response() {
+
+		String username = "admin";
+		String password = "admin";
+		String url = "http://192.168.8.109:8181/restconf/operational/opendaylight-inventory:nodes";
+		System.out.println(url);
+
 		try {
-			
-			String username = "admin";
-			String password = "admin";
-			
-			String newurl = "http://192.168.8.109:8181/restconf/operational/network-topology:network-topology/topology/flow%3A1";
-			System.out.println(newurl);
-			
-			URL obj = new URL(newurl);
-			HttpURLConnection con = (HttpURLConnection) obj.openConnection();
-			
-//			connection.setRequestMethod("POST");
-		    @SuppressWarnings("restriction")
+			URL obj = new URL(url);
+			HttpURLConnection connection = (HttpURLConnection) obj.openConnection();
+			connection.setRequestMethod("GET");
+
+			// Basic authorization
 			BASE64Encoder enc = new sun.misc.BASE64Encoder();
-		    String userpassword = username + ":" + password;
-		    @SuppressWarnings("restriction")
-			String encodedAuthorization = enc.encode( userpassword.getBytes() );
-		    con.setRequestProperty("Authorization", "Basic "+ encodedAuthorization);
-			
-			int responseCode = con.getResponseCode();
+			String userpassword = username + ":" + password;
+			String encodedAuthorization = enc.encode(userpassword.getBytes());
+			connection.setRequestProperty("Authorization", "Basic " + encodedAuthorization);
+
+			int responseCode = connection.getResponseCode();
 			System.out.println("Response Code : " + responseCode);
-			
-			BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
+
+			BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
 			String inputLine;
 			StringBuffer response = new StringBuffer();
 			while ((inputLine = in.readLine()) != null) {
 				response.append(inputLine);
 			}
 			in.close();
-			
-			// print in String
-//			 System.out.println(response.toString());
-			
-//			 ArrayList<String> authors = JsonPath.read(response.toString(), "$.topology[0].node[*]");
-			 ArrayList<String> authors = JsonPath.read(response.toString(), "$..host-tracker-service:addresses");
-			 ArrayList<String> author = JsonPath.read(response.toString(), "$..mac");
-			 
-			 System.out.println("------topology data-----");
-			 System.out.println(authors);
-			 System.out.println(author);
-			 
-			 
-			 
-		} catch (Exception e) {
-			System.out.println(e);
-		}
-	}
-        
-        public void get_response_data() {
-		try {
-			
-			String username = "admin";
-			String password = "admin";
-			
-			String newurl = "http://192.168.8.109:8181/restconf/operational/opendaylight-inventory:nodes/node/openflow%3A1";
-			System.out.println(newurl);
-			
-			URL obj = new URL(newurl);
-			HttpURLConnection con = (HttpURLConnection) obj.openConnection();
-			
-//			connection.setRequestMethod("POST");
-		    @SuppressWarnings("restriction")
-			BASE64Encoder enc = new sun.misc.BASE64Encoder();
-		    String userpassword = username + ":" + password;
-		    @SuppressWarnings("restriction")
-			String encodedAuthorization = enc.encode( userpassword.getBytes() );
-		    con.setRequestProperty("Authorization", "Basic "+ encodedAuthorization);
-			
-			int responseCode = con.getResponseCode();
-			System.out.println("Response Code : " + responseCode);
-			
-			BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
-			String inputLine;
-			StringBuffer response = new StringBuffer();
-			while ((inputLine = in.readLine()) != null) {
-				response.append(inputLine);
+
+			ArrayList<String> switchCount = JsonPath.read(response.toString(), "$..node.length()");
+
+			int switchCountInt = Integer.parseInt(trim_string(switchCount));
+
+			for (int i = 0; i < switchCountInt; i++) {
+
+				ArrayList<String> portCount = JsonPath.read(response.toString(),
+						"$..node[" + i + "].node-connector.length()");
+				int portCountInt = Integer.parseInt(trim_string(portCount));
+
+				for (int j = 0; j < portCountInt; j++) {
+					ArrayList<String> port_id = JsonPath.read(response.toString(),
+							"$..node[" + i + "].node-connector[" + j + "].id");
+					ArrayList<String> mac = JsonPath.read(response.toString(),
+							"$..node[" + i + "].node-connector[" + j + "].flow-node-inventory:hardware-address");
+					ArrayList<String> transmittedPackets = JsonPath.read(response.toString(),
+							"$..node[" + i + "].node-connector[" + j + "]..packets.transmitted");
+					ArrayList<String> receivedPackets = JsonPath.read(response.toString(),
+							"$..node[" + i + "].node-connector[" + j + "]..packets.received");
+					ArrayList<String> transmittedBytes = JsonPath.read(response.toString(),
+							"$..node[" + i + "].node-connector[" + j + "]..bytes.transmitted");
+					ArrayList<String> receivedBytes = JsonPath.read(response.toString(),
+							"$..node[" + i + "].node-connector[" + j + "]..bytes.received");
+					ArrayList<String> transmitDrops = JsonPath.read(response.toString(),
+							"$..node[" + i + "].node-connector[" + j + "]..transmit-drops");
+					ArrayList<String> receiveDrops = JsonPath.read(response.toString(),
+							"$..node[" + i + "].node-connector[" + j + "]..receive-drops");
+					ArrayList<String> transmitErrors = JsonPath.read(response.toString(),
+							"$..node[" + i + "].node-connector[" + j + "]..transmit-errors");
+					ArrayList<String> receiveErrors = JsonPath.read(response.toString(),
+							"$..node[" + i + "].node-connector[" + j + "]..receive-errors");
+
+					insertToPackets(trim_string(mac), trim_string(port_id),
+							Integer.parseInt(trim_string(receivedPackets)),
+							Integer.parseInt(trim_string(transmittedPackets)));
+					insertToBytes(trim_string(mac), trim_string(port_id), Integer.parseInt(trim_string(receivedBytes)),
+							Integer.parseInt(trim_string(transmittedBytes)));
+					insertToErrDetails(trim_string(mac), trim_string(port_id),
+							Integer.parseInt(trim_string(transmitDrops)), Integer.parseInt(trim_string(receiveDrops)),
+							Integer.parseInt(trim_string(transmitErrors)),
+							Integer.parseInt(trim_string(receiveErrors)));
+
+//					System.out.println("port_id -->> " + port_id.toString());
+//					System.out.println("mac -->> " + mac.toString());
+//					System.out.println("transmittedPackets -->> " + transmittedPackets.toString());
+//					System.out.println("receivedPackets -->> " + receivedPackets.toString());
+//					System.out.println("transmittedBytes -->> " + transmittedBytes.toString());
+//					System.out.println("receivedBytes -->> " + receivedBytes.toString());
+//					System.out.println("transmitDrops -->> " + transmitDrops.toString());
+//					System.out.println("receiveDrops -->> " + receiveDrops.toString());
+//					System.out.println("transmitErrors -->> " + transmitErrors.toString());
+//					System.out.println("receiveErrors -->> " + receiveErrors.toString());
+//					System.out.println("");
+//					System.out.println("");
+				}
 			}
-			in.close();
-			
-			// print in String
-//			 System.out.println(response.toString());
-			
-//			 ArrayList<String> authors = JsonPath.read(response.toString(), "$.topology[0].node[*]");
-			 ArrayList<String> authors = JsonPath.read(response.toString(), "$..node-connector");
-			 ArrayList<String> author = JsonPath.read(response.toString(), "$..packets");
-			 ArrayList<String> authorMac = JsonPath.read(response.toString(), "$..receive-drops");
-			 
-			 System.out.println("---transmit data---");
-			 System.out.println(authors);
-			 System.out.println(author);
-			 System.out.println(authorMac);
-			 
-			 
-			 
+
 		} catch (Exception e) {
 			System.out.println(e);
 		}
 	}
+
+	public String trim_string(ArrayList<String> str) {
+		return str.toString().replace("[", "").replace("]", "");
+	}
+
+	public void insertToPackets(String mac, String portId, int receivedPackets, int transmittedPackets) {
+		System.out.println("insertToPackets");
+		try {
+			// create a mysql database connection
+			String myDriver = "com.mysql.jdbc.Driver";
+			String myUrl = "jdbc:mysql://localhost/sdn";
+			Class.forName(myDriver);
+			Connection conn = DriverManager.getConnection(myUrl, "root", "");
+
+			// the mysql insert statement
+			String query = " insert into packets (mac, port_id, received_packets, transmitted_packets, date_time)"
+					+ " values (?, ?, ?, ?, ?)";
+
+			// create the mysql insert prepared statement
+			PreparedStatement preparedStmt = conn.prepareStatement(query);
+			preparedStmt.setString(1, mac);
+			preparedStmt.setString(2, portId);
+			preparedStmt.setInt(3, receivedPackets);
+			preparedStmt.setInt(4, transmittedPackets);
+			preparedStmt.setTimestamp(5, new Timestamp(System.currentTimeMillis()));
+
+			// execute the prepared statement
+			preparedStmt.execute();
+			conn.close();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void insertToBytes(String mac, String portId, int receivedBytes, int transmittedBytes) {
+		System.out.println("insertToBytes");
+		try {
+			// create a mysql database connection
+			String myDriver = "com.mysql.jdbc.Driver";
+			String myUrl = "jdbc:mysql://localhost/sdn";
+			Class.forName(myDriver);
+			Connection conn = DriverManager.getConnection(myUrl, "root", "");
+
+			// the mysql insert statement
+			String query = "insert into bytes (mac, port_id, received_bytes, transmitted_bytes, date_time)"
+					+ " values (?, ?, ?, ?, ?)";
+
+			// create the mysql insert prepared statement
+			PreparedStatement preparedStmt = conn.prepareStatement(query);
+			preparedStmt.setString(1, mac);
+			preparedStmt.setString(2, portId);
+			preparedStmt.setInt(3, receivedBytes);
+			preparedStmt.setInt(4, transmittedBytes);
+			preparedStmt.setTimestamp(5, new Timestamp(System.currentTimeMillis()));
+
+			// execute the prepared statement
+			preparedStmt.execute();
+			conn.close();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void insertToErrDetails(String mac, String portId, int transmitted_drops, int received_drops,
+			int transmitted_errors, int received_errors) {
+		System.out.println("insertToErrDetails");
+		try {
+			// create a mysql database connection
+			String myDriver = "com.mysql.jdbc.Driver";
+			String myUrl = "jdbc:mysql://localhost/sdn";
+			Class.forName(myDriver);
+			Connection conn = DriverManager.getConnection(myUrl, "root", "");
+
+			// the mysql insert statement
+			String query = "insert into error_details (mac, port_id, transmitted_drops, received_drops,	transmitted_errors,	received_errors, date_time"
+					+ ")" + " values (?, ?, ?, ?, ?, ?, ?)";
+
+			// create the mysql insert prepared statement
+			PreparedStatement preparedStmt = conn.prepareStatement(query);
+			preparedStmt.setString(1, mac);
+			preparedStmt.setString(2, portId);
+			preparedStmt.setInt(3, transmitted_drops);
+			preparedStmt.setInt(4, received_drops);
+			preparedStmt.setInt(5, transmitted_errors);
+			preparedStmt.setInt(6, received_errors);
+			preparedStmt.setTimestamp(7, new Timestamp(System.currentTimeMillis()));
+
+			// execute the prepared statement
+			preparedStmt.execute();
+			conn.close();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
 }
