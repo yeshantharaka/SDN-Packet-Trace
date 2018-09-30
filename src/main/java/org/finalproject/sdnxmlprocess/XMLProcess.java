@@ -9,21 +9,33 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
 import com.jayway.jsonpath.JsonPath;
 import sun.misc.BASE64Encoder;
 
 @SuppressWarnings("restriction")
 public class XMLProcess {
 	public static void main(String[] args) {
-		XMLProcess xmlProcess = new XMLProcess();
-		xmlProcess.get_response();
+		
+		final XMLProcess xmlProcess = new XMLProcess();
+		
+		ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
+		service.scheduleAtFixedRate(new Runnable() {
+		    public void run() {
+		    	xmlProcess.get_response();
+		    }
+		}, 0, 5, TimeUnit.MINUTES);
+		
 	}
 
 	public void get_response() {
 
 		String username = "admin";
 		String password = "admin";
-		String url = "http://192.168.8.109:8181/restconf/operational/opendaylight-inventory:nodes";
+		String url = "http://192.168.8.111:8181/restconf/operational/opendaylight-inventory:nodes";
 		System.out.println(url);
 
 		try {
