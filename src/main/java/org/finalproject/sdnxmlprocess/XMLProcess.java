@@ -14,20 +14,22 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import com.jayway.jsonpath.JsonPath;
+
 import sun.misc.BASE64Encoder;
 
 @SuppressWarnings("restriction")
 public class XMLProcess {
 	public static void main(String[] args) {
 		
-		final XMLProcess xmlProcess = new XMLProcess();
-		
-		ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
-		service.scheduleAtFixedRate(new Runnable() {
-		    public void run() {
-		    	xmlProcess.get_response();
-		    }
-		}, 0, 5, TimeUnit.MINUTES);
+            final XMLProcess xmlProcess = new XMLProcess();
+
+            ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
+            service.scheduleAtFixedRate(new Runnable() {
+                public void run() {
+                    xmlProcess.get_response();
+                    
+                }
+            }, 0, 5, TimeUnit.MINUTES);
 		
 	}
 
